@@ -75,17 +75,17 @@ def class31(output_dir, X_train, X_test, y_train, y_test):
 
             y_predictions = classifier.predict(X_test)
             conf_matrix = confusion_matrix(y_test, y_predictions)
-            accuracy = accuracy(conf_matrix)
-            if accuracy > max_accuracy:
+            acc = accuracy(conf_matrix)
+            if acc > max_accuracy:
                 iBest = i
-                max_accuracy = accuracy
-            recall = recall(conf_matrix)
-            precision = precision(conf_matrix)
+                max_accuracy = acc
+            recall_val = recall(conf_matrix)
+            precision_val = precision(conf_matrix)
 
             outf.write(f'Results for {classifier_name}:\n')  # Classifier name
-            outf.write(f'\tAccuracy: {accuracy:.4f}\n')
-            outf.write(f'\tRecall: {[round(item, 4) for item in recall]}\n')
-            outf.write(f'\tPrecision: {[round(item, 4) for item in precision]}\n')
+            outf.write(f'\tAccuracy: {acc:.4f}\n')
+            outf.write(f'\tRecall: {[round(item, 4) for item in recall_val]}\n')
+            outf.write(f'\tPrecision: {[round(item, 4) for item in precision_val]}\n')
             outf.write(f'\tConfusion Matrix: \n{conf_matrix}\n\n')
         # pass
 
@@ -126,8 +126,8 @@ def class32(output_dir, X_train, X_test, y_train, y_test, iBest):
             y_predictions = classifier.predict(X_test)
             conf_maxtrix = confusion_matrix(y_test, y_predictions)
 
-            accuracy = accuracy(conf_maxtrix)
-            outf.write(f'{num_train}: {accuracy:.4f}\n')
+            arr = accuracy(conf_maxtrix)
+            outf.write(f'{num_train}: {arr:.4f}\n')
 
             if num_train == 1000:
                 X_1k, y_1k = x_training, y_training
@@ -173,7 +173,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
         # that number of features:
         for k_feat in [5, 50]:
             selector = SelectKBest(f_classif, k=k_feat)
-            # X_new = selector.fit_transform(X_train, y_train)
+            X_new = selector.fit_transform(X_train, y_train)
             p_values = selector.pvalues_
             outf.write(f'{k_feat} p-values: {[round(pval, 4) for pval in p_values]}\n')
 
@@ -202,9 +202,9 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
        i: int, the index of the supposed best classifier (from task 3.1)  
         '''
     # print('TODO Section 3.4')
-    
-    X = np.concatenate(X_train, X_test)
-    Y = np.concatenate(y_train, y_test)
+    X = np.concatenate((X_train, X_test))
+    Y = np.concatenate((y_train, y_test))
+    print("start processing")
     with open(f"{output_dir}/a1_3.4.txt", "w") as outf:
         # Prepare kfold_accuracies, then uncomment this, so it writes them to outf.
         # for each fold:
@@ -213,6 +213,7 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
         # pass
         Kf = KFold(shuffle=True)
         classifier_accuracies = []
+        print("Calc accuracy")
         for train_index, test_index in Kf.split(X):
             x_train, y_train = X[train_index], Y[train_index]
             x_test, y_test = X[test_index], Y[test_index]
@@ -225,18 +226,19 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
                 y_predictions = classifier.predict(x_test)
                 conf_matrix = confusion_matrix(y_test, y_predictions)
 
-                accuracy = accuracy(conf_matrix)
-                kfold_accuracies[i] = accuracy
+                acc = accuracy(conf_matrix)
+                kfold_accuracies[i] = acc
             classifier_accuracies.append(kfold_accuracies)
             outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
 
+        print("Pval...")
         p_values = []
         classifier_accuracies = np.array(classifier_accuracies)
         classifier_accuracies = classifier_accuracies.transpose()
         for j in range(len(classifiers)):
             if j == i:
                 continue
-            S= ttest_rel(classifier_accuracies[j], classifier_accuracies[i])
+            S = ttest_rel(classifier_accuracies[j], classifier_accuracies[i])
             p_values.append(S.pvalue)
         outf.write(f'p-values: {[round(pval, 4) for pval in p_values]}\n')
 
@@ -259,7 +261,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # TODO: load data and split into train and test.
-    data = np.load(args.input) # Need to be tested
+    data = np.load(args.input)["arr_0"] # Need to be tested
+    # print(data["arr_0"].shape)
     x = data[:, :173]
     y = data[:, 173]
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, shuffle=True)
@@ -268,7 +271,6 @@ if __name__ == "__main__":
     output_dir = args.output_dir
     
     iBest = class31(output_dir, X_train, X_test, y_train, y_test)
-
     X_1k, y_1k = class32(output_dir, X_train, X_test, y_train, y_test, iBest)
 
     class33(output_dir, X_train, X_test, y_train, y_test, iBest, X_1k, y_1k)
