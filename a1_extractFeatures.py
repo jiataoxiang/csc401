@@ -38,13 +38,15 @@ BGNorm = {}
 with open("/u/cs401/Wordlists/BristolNorms+GilhoolyLogie.csv", mode="r") as csv_file:
     csv_reader = csv.DictReader(csv_file, delimiter=",")
     for row in csv_reader:
-        BGNorm[row["Word"]] = [row['AoA (100-700)'], row['IMG'], row['FAM']]
+        if "WORD" in row:
+            BGNorm[row["WORD"]] = [row['AoA (100-700)'], row['IMG'], row['FAM']]
 
 Warringer = {}
 with open("/u/cs401/Wordlists/Ratings_Warriner_et_al.csv", mode="r") as csv_file:
     csv_reader = csv.DictReader(csv_file, delimiter=",")
     for row in csv_reader:
-        BGNorm[row["Word"]] = [row['V.Mean.Sum'], row['A.Mean.Sum'], row['D.Mean.Sum']]
+        if "Word" in row:
+            Warringer[row["Word"]] = [row['V.Mean.Sum'], row['A.Mean.Sum'], row['D.Mean.Sum']]
 
 classes = ["Left", "Center", "Right", "Alt"]
 LIWC = []
@@ -52,8 +54,9 @@ ids = [{}, {}, {}, {}]
 for i, subroute in enumerate(classes):
     id_file_name = os.path.join("/u/cs401/A1/feats/", subroute + "_IDs.txt")
     with open(id_file_name, mode="r") as id_file:
-        for order, line in enumerate(id_file):  
-            LIWC[i][line.rstrip("\n")] = order
+        for order, line in enumerate(id_file):
+            comment_id = line.rstrip("\n")
+            ids[i][comment_id] = order # store comment id
     feats_file_name = os.path.join("/u/cs401/A1/feats/", subroute + "_feats.dat.npy")
     LIWC.append(np.load(feats_file_name))
 
@@ -75,19 +78,25 @@ def extract1(comment):
     feats = np.zeros(174)
     sentences = comment.split("\n")
     if sentences[-1] == "\n": # if it ends with \n, remove empty string
-        sentences.pop() 
+        sentences.pop()
     # TODO: Extract features that rely on capitalization.
     total_num_sentences = len(sentences)
     total_num_tokens = 0
-    AoA_list, IMG_list, FAM_list = [], [], []
-    V_list, A_list, D_list = [], [], []
+    AoA_list, IMG_list, FAM_list = [0], [0], [0]
+    V_list, A_list, D_list = [0], [0], [0]
     for sent in sentences:
         tokens = sent.split(" ")
         total_num_tokens += len(tokens)
         for i, token in enumerate(tokens):
             # if token.find("/") == -1: # empty string or a space
             #     continue
-            word, tag = token.split("/")
+            word_tag = token.split("/")
+            # print(word_tag)
+            if len(word_tag) < 2:
+                continue
+            word = word_tag[0]
+            tag = word_tag[1]
+            # print(word, tag)
             # feature 1: Number of tokens in uppercase (≥ 3 letters long)
             if word.isupper() and len(word) >= 3: feats[0] += 1
     # TODO: Lowercase the text in comment. Be careful not to lowercase the tags. (e.g. "Dog/NN" -> "dog/NN").
@@ -129,7 +138,9 @@ def extract1(comment):
             # feature 22: Standard deviation of IMG from Bristol, Gilhooly, and Logie norms
             # feature 23: Standard deviation of FAM from Bristol, Gilhooly, and Logie norms
             if word in BGNorm:
-                AoA, IMG, FAM = BGNorm[word]
+                # print(BGNorm[word])
+                # break
+                AoA, IMG, FAM = [float((val if val != "" else 0)) for val in BGNorm[word]]
                 AoA_list.append(AoA)
                 IMG_list.append(IMG)
                 FAM_list.append(FAM)
@@ -140,7 +151,8 @@ def extract1(comment):
             # feature 28: Standard deviation of A.Mean.Sum from Warringer norms
             # feature 29: Standard deviation of D.Mean.Sum from Warringer norms
             if word in Warringer:
-                V, A, D = Warringer[word]
+                # print(Warringer[word])
+                V, A, D = [float((val if val != "" else 0)) for val in Warringer[word]]
                 V_list.append(V)
                 A_list.append(A)
                 D_list.append(D)
@@ -151,13 +163,18 @@ def extract1(comment):
     # feature 17: Number of sentences.
     feats[16] = total_num_sentences
     # convert to numpy array
+    # if len(AoA_list) == 0 or len(IMG_list) == 0 or len(FAM_list) == 0 or len(V_list) == 0 or len(A_list) == 0 or len(D_list) == 0:
+    #     print(comment)
+    #     print(AoA_list, IMG_list, FAM_list, V_list, A_list, D_list)
     AoA_list = np.array(AoA_list)
     IMG_list = np.array(IMG_list)
     FAM_list = np.array(FAM_list)
     V_list = np.array(V_list)
     A_list = np.array(A_list)
     D_list = np.array(D_list)
+
     # feature 18-23
+    # print(AoA_list)
     feats[17] = np.mean(AoA_list)
     feats[18] = np.mean(IMG_list)
     feats[19] = np.mean(FAM_list)
@@ -171,6 +188,7 @@ def extract1(comment):
     feats[26] = np.std(V_list)
     feats[27] = np.std(A_list)
     feats[28] = np.std(D_list)
+    # print("done")
     return feats
 
           
@@ -214,8 +232,8 @@ def main(args):
     # TODO: Call extract2 for each feature vector to copy LIWC features (features 30-173)
     # into feats. (Note that these rely on each data point's class,
     # which is why we can't add them in extract1).
-        feats[i][29:173] = extract2(feat, comment_class, comment["id"])
-        feats[173] = classes.index(comment_class)
+        feats[i][29:173] = extract2(feat, comment_class, comment["id"])[29:173]
+        feats[i][173] = classes.index(comment_class)
     
     # print('TODO')
 
