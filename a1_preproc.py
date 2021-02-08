@@ -39,7 +39,7 @@ def preproc1(comment , steps=range(1, 6)):
     if 1 in steps:  
         #modify this to handle other whitespace chars.
         #replace newlines with spaces
-        modComm = re.sub(r"\n{1,}", " ", modComm)
+        modComm = re.sub(r"[\n\t\r]+", " ", modComm)
 
     if 2 in steps:  # unescape html
         # print("TODO")
@@ -63,9 +63,15 @@ def preproc1(comment , steps=range(1, 6)):
             for token in sent:
                 # lemmatization
                 if token.lemma_.startswith("-") and not token.text.startswith("-"):
-                    text = token.text
+                    if token.text.isupper():
+                        text = token.text
+                    else:
+                        text = token.text.lower()
                 else:
-                    text = token.lemma_
+                    if token.text.isupper():
+                        text = token.lemma_.upper()
+                    else:
+                        text = token.lemma_.lower()
                 with_tag = text + "/" + token.tag_ #tagging
                 sentence.append(with_tag)
             modComm.append(" ".join(sentence) + "\n")
@@ -88,11 +94,14 @@ def main(args):
 
             data = json.load(open(fullFile))
 
+            if len(data) < args.max:
+                samples = data
+            else:
             # TODO: select appropriate args.max lines
-            start_line = args.ID[0] % len(data)
-            end = start_line + args.max
-            end_line = end % len(data)
-            samples = data[start_line:end_line] if end_line < len(data) else data[:end_line] + data[start_line:] 
+                start_line = args.ID[0] % len(data)
+                end = start_line + args.max
+                end_line = end % len(data)
+                samples = data[start_line:end_line] if end_line < len(data) else data[:end_line] + data[start_line:]
             for line in samples:
                 result = {}
             # TODO: read those lines with something like `j = json.loads(line)`
@@ -100,15 +109,15 @@ def main(args):
             # TODO: choose to retain fields from those lines that are relevant to you
                 result["id"] = line_js_format["id"]
             # TODO: add a field to each selected line called 'cat' with the value of 'file' (e.g., 'Alt', 'Right', ...)
-                result["cat"] = file
             # TODO: process the body field (j['body']) with preproc1(...) using default for `steps` argument
             # TODO: replace the 'body' field with the processed text
                 result["body"] = preproc1(line_js_format["body"])
+                result["cat"] = file
             # TODO: append the result to 'allOutput'
                 allOutput.append(result)
             
     fout = open(args.output, 'w')
-    fout.write(json.dumps(allOutput))
+    fout.write(json.dumps(allOutput, indent=2))
     fout.close()
 
 

@@ -15,7 +15,6 @@ import json
 # self import lib
 import string
 import csv
-import numpy as np
 import os
 
 # Provided wordlists.
@@ -77,13 +76,14 @@ def extract1(comment):
     # print('TODO')
     feats = np.zeros(174)
     sentences = comment.split("\n")
-    if sentences[-1] == "\n": # if it ends with \n, remove empty string
+    if sentences[-1] == "": # if it ends with empty string, remove empty string
         sentences.pop()
     # TODO: Extract features that rely on capitalization.
     total_num_sentences = len(sentences)
     total_num_tokens = 0
-    AoA_list, IMG_list, FAM_list = [0], [0], [0]
-    V_list, A_list, D_list = [0], [0], [0]
+    word_token_count = 0
+    AoA_list, IMG_list, FAM_list = [], [], []
+    V_list, A_list, D_list = [], [], []
     for sent in sentences:
         tokens = sent.split(" ")
         total_num_tokens += len(tokens)
@@ -114,7 +114,7 @@ def extract1(comment):
             if tag == "VBD": feats[5] += 1
             # feature 7: Number of future-tense verbs
             if word.endswith("'ll") or word in {"will", "gonna"}: feats[6] += 1
-            if tag == "VB" and i > 1 and tokens[i - 1].startswith("to/") and tokens[i - 2].startswith("going/"): feats[6] += 1
+            if tag == "VB" and i > 1 and tokens[i - 1].startswith("to/") and tokens[i - 2].startswith("go/"): feats[6] += 1
             # feature 8: Number of commas
             if word == ",": feats[7] += 1
             # feature 9: Number of multi-character punctuation tokens
@@ -130,7 +130,9 @@ def extract1(comment):
             # feature 14: Number of slang acronyms
             if word in SLANG: feats[13] += 1  
             # feature 16: Average length of tokens, excluding punctuation-only tokens, in characters
-            if is_multi_punctation(word) or (len(word) == 0 and word in string.punctuation): feats[15] += 1
+            if not (is_multi_punctation(word) or word in string.punctuation):
+                feats[15] += len(word)
+                word_token_count += 1
             # feature 18: Average of AoA (100-700) from Bristol, Gilhooly, and Logie norms
             # feature 19: Average of IMG from Bristol, Gilhooly, and Logie norms
             # feature 20: Average of FAM from Bristol, Gilhooly, and Logie norms
@@ -157,9 +159,11 @@ def extract1(comment):
                 A_list.append(A)
                 D_list.append(D)
     # feature 15: Average length of sentences, in tokens
-    feats[14] =  total_num_tokens/total_num_sentences
+    if total_num_sentences > 0:
+        feats[14] = total_num_tokens/total_num_sentences
     # feature 16 updates
-    feats[15] /= total_num_tokens
+    if word_token_count > 0:
+        feats[15] /= word_token_count
     # feature 17: Number of sentences.
     feats[16] = total_num_sentences
     # convert to numpy array
@@ -175,19 +179,25 @@ def extract1(comment):
 
     # feature 18-23
     # print(AoA_list)
-    feats[17] = np.mean(AoA_list)
-    feats[18] = np.mean(IMG_list)
-    feats[19] = np.mean(FAM_list)
-    feats[20] = np.std(AoA_list)
-    feats[21] = np.std(IMG_list)
-    feats[22] = np.std(FAM_list)
+    if len(AoA_list) > 0:
+        feats[17] = np.mean(AoA_list)
+        feats[20] = np.std(AoA_list)
+    if len(IMG_list) > 0:
+        feats[18] = np.mean(IMG_list)
+        feats[21] = np.std(IMG_list)
+    if len(FAM_list) > 0:
+        feats[19] = np.mean(FAM_list)
+        feats[22] = np.std(FAM_list)
     # feature 24-29
-    feats[23] = np.mean(V_list)
-    feats[24] = np.mean(A_list)
-    feats[25] = np.mean(D_list)
-    feats[26] = np.std(V_list)
-    feats[27] = np.std(A_list)
-    feats[28] = np.std(D_list)
+    if len(V_list) > 0:
+        feats[23] = np.mean(V_list)
+        feats[26] = np.std(V_list)
+    if len(A_list) > 0:
+        feats[24] = np.mean(A_list)
+        feats[27] = np.std(A_list)
+    if len(D_list) > 0:
+        feats[25] = np.mean(D_list)
+        feats[28] = np.std(D_list)
     # print("done")
     return feats
 

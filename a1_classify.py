@@ -175,7 +175,7 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
             selector = SelectKBest(f_classif, k=k_feat)
             X_new = selector.fit_transform(X_train, y_train)
             p_values = selector.pvalues_
-            outf.write(f'{k_feat} p-values: {[round(pval, 4) for pval in p_values]}\n')
+            outf.write(f'{k_feat} p-values: {[format(pval) for pval in p_values]}\n')
 
         accuracy_1k, top_features_1k = get_top_5_features_accuracy(X_1k, y_1k, X_test, y_test, i)
         accuracy_full, top_features_full = get_top_5_features_accuracy(X_train, y_train, X_test, y_test, i)
@@ -221,13 +221,13 @@ def class34(output_dir, X_train, X_test, y_train, y_test, i):
             kfold_accuracies = np.zeros(5)
 
             for j in range(len(classifiers)):
-                classifier = eval(classifiers[i] + parameters[i])
+                classifier = eval(classifiers[j] + parameters[j])
                 classifier.fit(x_train, y_train)
                 y_predictions = classifier.predict(x_test)
                 conf_matrix = confusion_matrix(y_test, y_predictions)
 
                 acc = accuracy(conf_matrix)
-                kfold_accuracies[i] = acc
+                kfold_accuracies[j] = acc
             classifier_accuracies.append(kfold_accuracies)
             outf.write(f'Kfold Accuracies: {[round(acc, 4) for acc in kfold_accuracies]}\n')
 
@@ -260,7 +260,7 @@ if __name__ == "__main__":
         default=os.path.dirname(os.path.dirname(__file__)))
     args = parser.parse_args()
     
-    # TODO: load data and split into train and test.
+    # TODO: load data and split into train and data.
     data = np.load(args.input)["arr_0"] # Need to be tested
     # print(data["arr_0"].shape)
     x = data[:, :173]
