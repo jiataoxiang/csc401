@@ -1,3 +1,5 @@
+mkdir -p output
+
 rm ./output/compare*
 
 grep "body" test.json >> ./output/compare1
