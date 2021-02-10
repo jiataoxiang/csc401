@@ -175,6 +175,8 @@ def class33(output_dir, X_train, X_test, y_train, y_test, i, X_1k, y_1k):
             selector = SelectKBest(f_classif, k=k_feat)
             X_new = selector.fit_transform(X_train, y_train)
             p_values = selector.pvalues_
+            feature_indices = selector.get_support(indices=True)
+            p_values = p_values[feature_indices]
             outf.write(f'{k_feat} p-values: {[format(pval) for pval in p_values]}\n')
 
         accuracy_1k, top_features_1k = get_top_5_features_accuracy(X_1k, y_1k, X_test, y_test, i)
