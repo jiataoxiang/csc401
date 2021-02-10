@@ -3,3 +3,7 @@
 10000: 0.4745
 15000: 0.4688
 20000: 0.4671
+
+As you can see from above result, as number of training samples increases, the accuracy first increases, then decreases.
+This is expected because at the beginning, the model is underfitting. Increase training samples will make it has better generalization.
+However, as training samples keep increasing, the model is overfitting, which causes decrease in accuracy.
