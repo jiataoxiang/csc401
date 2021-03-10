@@ -339,22 +339,38 @@ class DecoderWithMultiHeadAttention(DecoderWithAttention):
         #   tensor([1,2,3,4]).repeat_interleave(2) will output
         #   tensor([1,1,2,2,3,3,4,4]), just like numpy.repeat.
         # assert False, "Fill me"
+        # h = self.W(h.repeat_interleave(self.heads, dim=1))
+        # h = h[:, torch.arange(0, h.shape[1], self.heads), :]
+        # if self.cell_type == "lstm":
+        #     htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0))
+        #     htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
+        #     htilde_t = (htilde_t_val, htilde_t[1])
+        # else:
+        #     htilde_t = self.Wtilde(htilde_t.repeat_interleave(self.heads, dim=0))
+        #     htilde_t = htilde_t[torch.arange(0, htilde_t.shape[0], self.heads), :]
+        # # print(h.shape)
+        # c_t = super().attend(htilde_t, h, F_lens)
+        # return self.Q(c_t)
+        S, M, H2 = h.shape
+        slice_length = H2 // self.heads
+        h = self.W(h.repeat_interleave(self.heads, dim=2).view(S, M, -1, H2))
+        h = torch.cat([h[:, :, i, slice_length * i: slice_length * (i + 1)].view(S, M, -1) for i in range(self.heads)], dim=2)
+        # h = h[:, torch.arange(0, h.shape[1], self.heads), :]
         if self.cell_type == "lstm":
-            htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0))
-            htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
+            htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0).view(M, -1, H2))
+            htilde_t_val = torch.cat([htilde_t_val[:, i, slice_length * i: slice_length * (i + 1)].view(M, -1) for i in range(self.heads)], dim=1)
+            # htilde_t_cell = htilde_t[1].repeat_interleave(self.heads, dim=0).view(M, -1, H2)
+            # htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
             htilde_t = (htilde_t_val, htilde_t[1])
-            # print(htilde_t[0].shape)
         else:
-            htilde_t = self.Wtilde(htilde_t.repeat_interleave(self.heads, dim=0))
-            htilde_t = htilde_t[torch.arange(0, htilde_t.shape[0], self.heads), :]
-            # print(htilde_t)
+            htilde_t = self.Wtilde(htilde_t.repeat_interleave(self.heads, dim=0).view(M, -1, H2))
+            htilde_t = torch.cat(
+                [htilde_t[:, i, slice_length * i: slice_length * (i + 1)].view(M, -1) for i in range(self.heads)],
+                dim=1)
+            # htilde_t = htilde_t[torch.arange(0, htilde_t.shape[0], self.heads), :]
         # print(h.shape)
         c_t = super().attend(htilde_t, h, F_lens)
         return self.Q(c_t)
-
-
-
-
 
 
 class EncoderDecoder(EncoderDecoderBase):
