@@ -70,8 +70,7 @@ class Encoder(EncoderBase):
         #   F is size (S, M)
         #   x (output) is size (S, M, I)
         # assert False, "Fill me"
-        x_out = self.embedding(F)
-        return x_out
+        return self.embedding(F)
 
     def get_all_hidden_states(self, x, F_lens, h_pad):
         # Recall:
@@ -85,9 +84,9 @@ class Encoder(EncoderBase):
         #   torch.nn.utils.rnn.{pad_packed,pack_padded}_sequence
         # assert False, "Fill me"
         packed = torch.nn.utils.rnn.pack_padded_sequence(x, F_lens, enforce_sorted=False)
-        output, h_n = self.rnn(packed)
-        output, length = torch.nn.utils.rnn.pad_packed_sequence(output, padding_value=h_pad)
-        return output
+        hidden = self.rnn(packed)[0]
+        hidden = torch.nn.utils.rnn.pad_packed_sequence(hidden, padding_value=h_pad)[0]
+        return hidden
 
 
 class DecoderWithoutAttention(DecoderBase):
@@ -142,12 +141,12 @@ class DecoderWithoutAttention(DecoderBase):
         # assert False, "Fill me"
 
         xtilde_t = self.get_current_rnn_input(E_tm1, htilde_tm1, h, F_lens).to(E_tm1.device)
-        h_t = self.get_current_hidden_state(xtilde_t, htilde_tm1)
+        htilde_t = self.get_current_hidden_state(xtilde_t, htilde_tm1)
         if self.cell_type == 'lstm':
-            logits = self.get_current_logits(h_t[0])
+            logits_t = self.get_current_logits(htilde_t[0])
         else:
-            logits = self.get_current_logits(h_t)
-        return logits, h_t
+            logits_t = self.get_current_logits(htilde_t)
+        return logits_t, htilde_t
 
     def get_first_hidden_state(self, h, F_lens):
         # Recall:
@@ -168,11 +167,6 @@ class DecoderWithoutAttention(DecoderBase):
         # assert False, "Fill me"
         forward = h[F_lens - 1, torch.arange(F_lens.size(0)), : self.hidden_state_size // 2]
         backward = h[0, :, self.hidden_state_size // 2: self.hidden_state_size]
-
-        # S, N, H2 = h.shape
-        # forward = h[F_lens - 1, torch.arange(N), : H2 // 2]
-        # backward = h[0, :, H2 // 2:]
-
         return torch.cat((forward, backward), dim=1)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
@@ -191,8 +185,7 @@ class DecoderWithoutAttention(DecoderBase):
         #   htilde_tm1 is of size (M, 2 * H) or a tuple of two of those (LSTM)
         #   htilde_t (output) is of same size as htilde_tm1
         # assert False, "Fill me"
-        htilde_t = self.cell(xtilde_t, htilde_tm1)
-        return htilde_t
+        return self.cell(xtilde_t, htilde_tm1) # htilde_t
 
     def get_current_logits(self, htilde_t):
         # Recall:
@@ -346,12 +339,6 @@ class DecoderWithMultiHeadAttention(DecoderWithAttention):
         #   tensor([1,2,3,4]).repeat_interleave(2) will output
         #   tensor([1,1,2,2,3,3,4,4]), just like numpy.repeat.
         # assert False, "Fill me"
-        # print(h.shape, self.heads)
-        # print(h.shape)
-        h_multi = h.repeat_interleave(self.heads, dim=1)
-        # print(h_multi.shape)
-        h = self.W(h_multi)
-        h = h[:, torch.arange(0, h.shape[1], self.heads), :]
         if self.cell_type == "lstm":
             htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0))
             htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
@@ -364,6 +351,10 @@ class DecoderWithMultiHeadAttention(DecoderWithAttention):
         # print(h.shape)
         c_t = super().attend(htilde_t, h, F_lens)
         return self.Q(c_t)
+
+
+
+
 
 
 class EncoderDecoder(EncoderDecoderBase):
@@ -408,21 +399,13 @@ class EncoderDecoder(EncoderDecoderBase):
         # 2. Recall an LSTM's cell state is always initialized to zero.
         # 3. Note logits sequence dimension is one shorter than E (why?)
         # assert False, "Fill me"
-        # T, M = E.shape
-        # logits = torch.zeros(T - 1, M, self.target_vocab_size, device=h.device)
-        #
-        # htilde_tm1 = None
-        # for t in range(T - 1):
-        #     E_tml = E[t]
-        #     logits_t, htilde_tm1 = self.decoder.forward(E_tml, htilde_tm1, h, F_lens)
-        #     logits[t, :, :] = logits_t
-        # return logits
         logits = []
         htilde_tm1 = None
-        for t in range(E.size()[0] - 1):
-            l, htilde_tm1 = self.decoder.forward(E[t], htilde_tm1, h, F_lens)
-            logits.append(l)
-        logits = torch.stack(logits[:], 0)
+        for t in range(E.size()[0] - 1): # loop through time step
+            E_tm1 = E[t]
+            logit, htilde_tm1 = self.decoder.forward(E_tm1, htilde_tm1, h, F_lens)
+            logits.append(logit)
+        logits = torch.stack(logits, dim=0)
         return logits
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
@@ -446,39 +429,24 @@ class EncoderDecoder(EncoderDecoderBase):
         # 2. If you flatten a two-dimensional array of size z of (A, B),
         #   then the element z[a, b] maps to z'[a*B + b]
         # assert False, "Fill me"
-        N, K, V = logpy_t.shape
-        T = b_tm1_1.shape[0]
-        extentions_t = (logpb_tm1.unsqueeze(-1) + logpy_t)
+        M, K, V = logpy_t.shape
+
+        extentions_t = (torch.repeat_interleave(logpb_tm1.unsqueeze(-1), V, dim=2) + logpy_t)
 
         logpb_t, v = extentions_t.flatten(start_dim=1).topk(K, dim=1)
 
-        indices = v // self.target_vocab_size
-        modulos = v % self.target_vocab_size
-
-        b_t_1 = torch.zeros(T + 1, N, K, dtype=torch.long)
-        for n in range(N):
-            idx = indices[n, :]
-            mod = modulos[n, :]
-            i = 0
-            for j in range(K):
-                k, word_idx = idx[j], mod[j]
-                b_t_1[:T, n, i] = b_tm1_1[:, n, k]
-                b_t_1[T, n, i] = word_idx
-                i += 1
+        paths = v // V # path chosen
+        v = v % V # words chosen
+        # print(b_tm1_1.shape, v.shape)
+        b_t_1 = torch.cat([b_tm1_1.gather(2, paths.unsqueeze(0).expand_as(b_tm1_1)), v.unsqueeze(0)], dim=0)
 
         if self.decoder.cell_type == "lstm":
-            hid = htilde_t[0]
-            cell = htilde_t[1]
-
-            expanded_indices_hid = torch.unsqueeze(indices, dim=2).expand_as(hid)
-            expanded_indices_cell = torch.unsqueeze(indices, dim=2).expand_as(cell)
-            b_t_0 = (
-                torch.gather(hid, dim=1, index=expanded_indices_hid),
-                torch.gather(cell, dim=1, index=expanded_indices_cell)
-            )
-            return b_t_0, b_t_1.to(htilde_t[0].device), logpb_t
+            hidden, cell = htilde_t[0], htilde_t[1]
+            indices_hidden = torch.unsqueeze(paths, dim=2).expand_as(hidden)
+            indices_cell = torch.unsqueeze(paths, dim=2).expand_as(cell)
+            b_t_0 = (torch.gather(hidden, dim=1, index=indices_hidden), torch.gather(cell, dim=1, index=indices_cell))
         else:
-            expanded_indices = torch.unsqueeze(indices, dim=2).expand_as(htilde_t)
-            b_t_0 = torch.gather(htilde_t, dim=1, index=expanded_indices)
+            indices_hidden = torch.unsqueeze(paths, dim=2).expand_as(htilde_t)
+            b_t_0 = torch.gather(htilde_t, dim=1, index=indices_hidden)
 
-        return b_t_0, b_t_1.to(htilde_t.device), logpb_t
+        return b_t_0, b_t_1, logpb_t

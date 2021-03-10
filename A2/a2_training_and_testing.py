@@ -96,13 +96,10 @@ def train_for_epoch(model, dataloader, optimizer, device):
         mask = model.get_target_padding_mask(E)
         mod_E = E.masked_fill(mask, -1)
         # flatten sequence dimension into batch dimension
-        logits_flatten = logits.permute((1, 2, 0)).to(device) #swap indices to batch indices
-        # logits_flatten = torch.flatten(logits, start_dim=0, end_dim=-2).to(device)
-        # flat_E = torch.flatten(mod_E[1:], start_dim=0)
+        logits_flatten = logits.permute((1, 2, 0)).to(device) # swap indices to batch indices
         flat_E = mod_E[1:, :].T
 
         loss = loss_fn(logits_flatten, flat_E)
-        # loss = torch.autograd.Variable(loss, requires_grad=True)
         loss.backward()
         optimizer.step()
 
@@ -112,14 +109,11 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
     return total_loss / num_batch
 
+
 def remove_padding(arr, target_eos, target_sos):
     res = []
     for i in arr:
-        # if str(i) == str(target_sos) or str(i) == str(target_eos):
-        #     print("find!")
-        # if str(i) == "<SOS>" or str(i) == "<EOS>":
-        #     print("find2!")
-        if str(i) != str(target_sos) and str(i) != str(target_eos):
+        if i != target_sos and i != target_eos:
             res.append(i)
     return res
 
@@ -155,8 +149,6 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     for n in range(N):
         ref = remove_padding(E_ref[:, n].tolist(), target_eos, target_sos)
         hyp = remove_padding(E_cand[:, n].tolist(), target_eos, target_sos)
-        if min(len(ref), len(hyp)) < n_gram:
-            continue
         bleu_score = a2_bleu_score.BLEU_score(ref, hyp, n_gram)
         total_bleu += bleu_score
     return total_bleu
@@ -205,7 +197,6 @@ def compute_average_bleu_over_dataset(
         F_lens = F_lens.to(device)
         b_1 = model(F, F_lens).to(device)
         E_cand = b_1[:, :, 0]
-        score = compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos)
-        total_bleu += score
+        total_bleu += compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos)
         num_batch += F_lens.shape[0]
-    return total_bleu / num_batch if num_batch > 0 else 0
+    return total_bleu / num_batch
