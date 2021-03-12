@@ -94,11 +94,12 @@ def train_for_epoch(model, dataloader, optimizer, device):
         logits = model(F, F_lens, E).to(device)
         # replace eos with mask
         mask = model.get_target_padding_mask(E)
-        mod_E = E.masked_fill(mask, -1)
+        E = E.masked_fill(mask, -1)
         # flatten sequence dimension into batch dimension
-        logits_flatten = logits.permute((1, 2, 0)).to(device) # swap indices to batch indices
-        flat_E = mod_E[1:, :].T
-
+        # print(logits.shape, E.shape)
+        logits_flatten = logits.permute((1, 2, 0)) # swap indices to batch indices
+        flat_E = E[1:, :].permute((1, 0))
+        # batch loss, backprop and update
         loss = loss_fn(logits_flatten, flat_E)
         loss.backward()
         optimizer.step()
@@ -144,8 +145,7 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     # of numbers
     # assert False, "Fill me"
     T, N = E_ref.shape
-    n_gram = 4
-    total_bleu = 0
+    n_gram, total_bleu = 4, 0
     for n in range(N):
         ref = remove_padding(E_ref[:, n].tolist(), target_eos, target_sos)
         hyp = remove_padding(E_cand[:, n].tolist(), target_eos, target_sos)

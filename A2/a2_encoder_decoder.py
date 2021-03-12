@@ -271,8 +271,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # assert False, "Fill me"
 
         alpha_t = self.get_attention_weights(htilde_t, h, F_lens)
+        # make sure it has same dimension as h to do element-wise multiplication
         alpha_t = torch.repeat_interleave(alpha_t.unsqueeze(2), h.shape[2], dim=2)
-        # print(alpha_t.shape, h.shape)
         return torch.sum(torch.mul(alpha_t, h), dim=0)
 
     def get_attention_weights(self, htilde_t, h, F_lens):
@@ -339,38 +339,15 @@ class DecoderWithMultiHeadAttention(DecoderWithAttention):
         #   tensor([1,2,3,4]).repeat_interleave(2) will output
         #   tensor([1,1,2,2,3,3,4,4]), just like numpy.repeat.
         # assert False, "Fill me"
-        # h = self.W(h.repeat_interleave(self.heads, dim=1))
-        # h = h[:, torch.arange(0, h.shape[1], self.heads), :]
-        # if self.cell_type == "lstm":
-        #     htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0))
-        #     htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
-        #     htilde_t = (htilde_t_val, htilde_t[1])
-        # else:
-        #     htilde_t = self.Wtilde(htilde_t.repeat_interleave(self.heads, dim=0))
-        #     htilde_t = htilde_t[torch.arange(0, htilde_t.shape[0], self.heads), :]
-        # # print(h.shape)
-        # c_t = super().attend(htilde_t, h, F_lens)
-        # return self.Q(c_t)
         S, M, H2 = h.shape
-        slice_length = H2 // self.heads
-        h = self.W(h.repeat_interleave(self.heads, dim=2).view(S, M, -1, H2))
-        h = torch.cat([h[:, :, i, slice_length * i: slice_length * (i + 1)].view(S, M, -1) for i in range(self.heads)], dim=2)
-        # h = h[:, torch.arange(0, h.shape[1], self.heads), :]
-        if self.cell_type == "lstm":
-            htilde_t_val = self.Wtilde(htilde_t[0].repeat_interleave(self.heads, dim=0).view(M, -1, H2))
-            htilde_t_val = torch.cat([htilde_t_val[:, i, slice_length * i: slice_length * (i + 1)].view(M, -1) for i in range(self.heads)], dim=1)
-            # htilde_t_cell = htilde_t[1].repeat_interleave(self.heads, dim=0).view(M, -1, H2)
-            # htilde_t_val = htilde_t_val[torch.arange(0, htilde_t_val.shape[0], self.heads), :]
-            htilde_t = (htilde_t_val, htilde_t[1])
-        else:
-            htilde_t = self.Wtilde(htilde_t.repeat_interleave(self.heads, dim=0).view(M, -1, H2))
-            htilde_t = torch.cat(
-                [htilde_t[:, i, slice_length * i: slice_length * (i + 1)].view(M, -1) for i in range(self.heads)],
-                dim=1)
-            # htilde_t = htilde_t[torch.arange(0, htilde_t.shape[0], self.heads), :]
-        # print(h.shape)
-        c_t = super().attend(htilde_t, h, F_lens)
-        return self.Q(c_t)
+        # slice h into n heads
+        h = self.W(h).view(S, -1, H2 // self.heads)
+        # slice htilde into n heads
+        htilde_t = self.Wtilde(htilde_t).view(-1, H2 // self.heads)
+        # need update F_lens to M * self.heads
+        c_t = super().attend(htilde_t, h, F_lens.repeat_interleave(self.heads))
+        # reshape it back to proper number of hidden states
+        return self.Q(c_t.view(M, H2))
 
 
 class EncoderDecoder(EncoderDecoderBase):
@@ -417,10 +394,11 @@ class EncoderDecoder(EncoderDecoderBase):
         # assert False, "Fill me"
         logits = []
         htilde_tm1 = None
-        for t in range(E.size()[0] - 1): # loop through time step
+        for t in range(E.size()[0] - 1): # loop through timestamp
             E_tm1 = E[t]
             logit, htilde_tm1 = self.decoder.forward(E_tm1, htilde_tm1, h, F_lens)
             logits.append(logit)
+        # stack the logit of each timestamp
         logits = torch.stack(logits, dim=0)
         return logits
 
@@ -445,22 +423,21 @@ class EncoderDecoder(EncoderDecoderBase):
         # 2. If you flatten a two-dimensional array of size z of (A, B),
         #   then the element z[a, b] maps to z'[a*B + b]
         # assert False, "Fill me"
-        M, K, V = logpy_t.shape
-
+        M, K, V = logpy_t.shape # batch size, beam width, vocab size
+        # get extention scores
         extentions_t = (torch.repeat_interleave(logpb_tm1.unsqueeze(-1), V, dim=2) + logpy_t)
-
+        # shrink to beam width, and best paths indices
         logpb_t, v = extentions_t.flatten(start_dim=1).topk(K, dim=1)
 
-        paths = v // V # path chosen
-        v = v % V # words chosen
-        # print(b_tm1_1.shape, v.shape)
-        b_t_1 = torch.cat([b_tm1_1.gather(2, paths.unsqueeze(0).expand_as(b_tm1_1)), v.unsqueeze(0)], dim=0)
-
+        paths = v // V # path index chosen
+        v = v % V # words index chosen
+        # get path sequences, concat new words
+        b_t_1 = torch.cat([torch.gather(b_tm1_1, dim=2, index=paths.unsqueeze(0).expand_as(b_tm1_1)), v.unsqueeze(0)], dim=0)
+        # get path hidden states
         if self.decoder.cell_type == "lstm":
             hidden, cell = htilde_t[0], htilde_t[1]
-            indices_hidden = torch.unsqueeze(paths, dim=2).expand_as(hidden)
-            indices_cell = torch.unsqueeze(paths, dim=2).expand_as(cell)
-            b_t_0 = (torch.gather(hidden, dim=1, index=indices_hidden), torch.gather(cell, dim=1, index=indices_cell))
+            indices = torch.unsqueeze(paths, dim=2).expand_as(hidden)
+            b_t_0 = (torch.gather(hidden, dim=1, index=indices), torch.gather(cell, dim=1, index=indices))
         else:
             indices_hidden = torch.unsqueeze(paths, dim=2).expand_as(htilde_t)
             b_t_0 = torch.gather(htilde_t, dim=1, index=indices_hidden)
