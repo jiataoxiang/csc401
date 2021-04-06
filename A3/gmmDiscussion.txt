@@ -1,0 +1,55 @@
+==========Change num_speaker================
+Setting: M = 2, maxIter = 1, epsilon = 0.0
+num_speaker: 10, accuracy: 0.7
+num_speaker: 20, accuracy: 0.65
+num_speaker: 30, accuracy: 0.53125
+
+Explanation:
+As we can see from above result, as number of speaker increase, accuracy will decrease
+============================================
+
+==========Change M==========================
+Setting: maxIter = 1， epsilon = 0.0， num_speaker = 30
+M = 1, accuracy: 1.0
+M = 2, accuracy: 0.6
+M = 5, accuracy: 0.933333
+M = 10, accuracy: 1.0
+M = 20, accuracy: 0.966667
+
+Explanation:
+In my experiment, it seems that only when M = 2 gives bad result.
+============================================
+
+
+===========Change maxIter=====================
+Setting: M = 2, epsilon = 0.0, num_speaker = 30
+maxIter = 2, accuracy: 0.666667
+maxIter = 5, accuracy: 0.9
+maxIter = 10, accuracy: 1.0
+maxIter = 20, accuracy: 1.0
+
+Explanation:
+As maxIter increases, the accuracy increases
+==============================================
+
+
+===========Change epsilon=====================
+Setting: M = 2, maxIter = 2, num_speaker = 30
+epsilon = 0.001, accuracy: 0.7
+epsilon = 0.01, accuracy: 0.7
+epsilon = 0.1, accuracy: 0.666667
+epsilon = 0.5, accuracy: 0.733333
+
+Explanation:
+It seems that epsilon doesn't affect accuracy too much
+===============================================
+
+
+Hypothetical answers:
+Q1. We can find appriopriate M so that it best explains the data. Or increase
+max iterations to make sure it converge to optimal.
+
+Q2. If that is the case, then probability of all speakers will be low but the
+classifier still assign the most probable one.
+
+Q3. We could use Neural Networks or Hidden Markov Model.

@@ -1,0 +1,9 @@
+model configurations: default
+
+hidden_size: 5, test accuracy: 0.323
+hidden_size: 10, test accuracy: 0.355
+hidden_size: 50, test accuracy: 0.581
+
+Discussion:
+As we can see from above result, as number of hidden unit increase, the test
+accuracy will also increase. This shows that more features helps to detect lies.	
