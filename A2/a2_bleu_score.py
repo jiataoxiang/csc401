@@ -64,7 +64,7 @@ def n_gram_precision(reference, candidate, n):
     '''
     # assert False, "Fill me"
     if len(candidate) == 0 or n > len(candidate):
-        return 0.0
+        return 0
     ref_ngram = grouper(reference, n)
     candi_ngram = grouper(candidate, n)
     ref_count = 0
@@ -94,9 +94,9 @@ def brevity_penalty(reference, candidate):
     '''
     # assert False, "Fill me"
     if len(candidate) == 0:
-        return 0.0
+        return 0
     brevity = len(reference) / len(candidate)
-    return 1.0 if brevity < 1 else exp(1 - brevity)
+    return 1 if brevity < 1 else exp(1 - brevity)
 
 
 def BLEU_score(reference, candidate, n):

@@ -340,12 +340,12 @@ class DecoderWithMultiHeadAttention(DecoderWithAttention):
         #   tensor([1,1,2,2,3,3,4,4]), just like numpy.repeat.
         # assert False, "Fill me"
         S, M, H2 = h.shape
-        # slice h into n heads
-        h = self.W(h).view(S, -1, H2 // self.heads)
-        # slice htilde into n heads
-        htilde_t = self.Wtilde(htilde_t).view(-1, H2 // self.heads)
-        # need update F_lens to M * self.heads
-        c_t = super().attend(htilde_t, h, F_lens.repeat_interleave(self.heads))
+        h = self.W(h)
+        htilde_t = self.Wtilde(htilde_t)
+        # split hidden states into n slices, need update F_lens to M * self.heads
+        c_t = super().attend(htilde_t.view(-1, H2 // self.heads),
+                             h.view(S, -1, H2 // self.heads),
+                             F_lens.repeat_interleave(self.heads))
         # reshape it back to proper number of hidden states
         return self.Q(c_t.view(M, H2))
 

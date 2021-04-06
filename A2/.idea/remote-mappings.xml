@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@sftp://xiangji5@teach.cs.utoronto.ca:22/usr/local/bin/python3.7">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$/../../A3" remote-root="/h/u14/c7/01/xiangji5/Desktop/21w/401A3" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>

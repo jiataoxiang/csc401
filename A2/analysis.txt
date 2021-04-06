@@ -1,0 +1,97 @@
+Training
+
+Without attention
+100%|██████████| 2171/2171 [03:32<00:00, 10.22it/s]
+100%|██████████| 257/257 [00:25<00:00, 10.23it/s]
+Epoch 1: loss=3.4087565553622112, BLEU=0.23553515656147106
+100%|██████████| 2171/2171 [03:33<00:00, 10.19it/s]
+100%|██████████| 257/257 [00:25<00:00,  9.89it/s]
+Epoch 2: loss=2.44668401089312, BLEU=0.26658240207733375
+100%|██████████| 2171/2171 [03:33<00:00, 10.19it/s]
+100%|██████████| 257/257 [00:25<00:00, 10.02it/s]
+Epoch 3: loss=1.9815409083017168, BLEU=0.279550409050096
+100%|██████████| 2171/2171 [03:33<00:00, 10.17it/s]
+100%|██████████| 257/257 [00:25<00:00, 10.11it/s]
+Epoch 4: loss=1.6293248148460862, BLEU=0.29084679424616844
+100%|██████████| 2171/2171 [03:33<00:00, 10.17it/s]
+100%|██████████| 257/257 [00:24<00:00, 10.34it/s]
+Epoch 5: loss=1.3581497089921029, BLEU=0.2953108283372596
+Finished 5 epochs
+
+Single-head attention
+100%|██████████| 2171/2171 [04:43<00:00,  7.65it/s]
+100%|██████████| 257/257 [00:31<00:00,  8.26it/s]
+Epoch 1: loss=3.1878572498692286, BLEU=0.27790658839322224
+100%|██████████| 2171/2171 [04:44<00:00,  7.63it/s]
+100%|██████████| 257/257 [00:32<00:00,  7.98it/s]
+Epoch 2: loss=2.1360254830778165, BLEU=0.30611659797533936
+100%|██████████| 2171/2171 [04:44<00:00,  7.64it/s]
+100%|██████████| 257/257 [00:31<00:00,  8.11it/s]
+Epoch 3: loss=1.6683159734400008, BLEU=0.3161894760516142
+100%|██████████| 2171/2171 [04:44<00:00,  7.64it/s]
+100%|██████████| 257/257 [00:31<00:00,  8.09it/s]
+Epoch 4: loss=1.336066079710772, BLEU=0.3244221883235849
+100%|██████████| 2171/2171 [04:44<00:00,  7.64it/s]
+100%|██████████| 257/257 [00:31<00:00,  8.19it/s]
+Epoch 5: loss=1.0948967317291691, BLEU=0.3261673837942857
+Finished 5 epochs
+
+Multi-head attention
+100%|██████████| 2171/2171 [05:30<00:00,  6.56it/s]
+100%|██████████| 257/257 [00:41<00:00,  6.16it/s]
+Epoch 1: loss=3.1571178612539925, BLEU=0.27599453859450396
+100%|██████████| 2171/2171 [05:33<00:00,  6.51it/s]
+100%|██████████| 257/257 [00:40<00:00,  6.30it/s]
+Epoch 2: loss=2.1633387833133595, BLEU=0.30449917766411855
+100%|██████████| 2171/2171 [05:33<00:00,  6.52it/s]
+100%|██████████| 257/257 [00:37<00:00,  6.79it/s]
+Epoch 3: loss=1.7538783537084086, BLEU=0.314604368095606
+100%|██████████| 2171/2171 [05:33<00:00,  6.50it/s]
+100%|██████████| 257/257 [00:38<00:00,  6.67it/s]
+Epoch 4: loss=1.4706417730139016, BLEU=0.32035615242919074
+100%|██████████| 2171/2171 [05:33<00:00,  6.52it/s]
+100%|██████████| 257/257 [00:38<00:00,  6.65it/s]
+Epoch 5: loss=1.2625057340382102, BLEU=0.32472760116772
+Finished 5 epochs
+
+Testing
+
+Without attention
+100%|██████████| 490/490 [00:41<00:00, 11.80it/s]
+The average BLEU score over the test set was 0.3295703585417523
+
+Single-head attention
+  5%|▌         | 26/490 [00:02<00:49,  9.28it/s]/h/u14/c7/01/xiangji5/Desktop/21w/401A2/a2_abcs.py:894: UserWarning: Beam search not finished by t=100. Halted
+  warnings.warn(f'Beam search not finished by t={t}. Halted')
+100%|██████████| 490/490 [00:51<00:00,  9.52it/s]
+The average BLEU score over the test set was 0.36728867877425747
+
+Multi-head attention
+  6%|▌         | 27/490 [00:03<00:57,  8.10it/s]/h/u14/c7/01/xiangji5/Desktop/21w/401A2/a2_abcs.py:894: UserWarning: Beam search not finished by t=100. Halted
+  warnings.warn(f'Beam search not finished by t={t}. Halted')
+  6%|▌         | 28/490 [00:04<02:18,  3.33it/s]/h/u14/c7/01/xiangji5/Desktop/21w/401A2/a2_abcs.py:894: UserWarning: Beam search not finished by t=100. Halted
+  warnings.warn(f'Beam search not finished by t={t}. Halted')
+100%|██████████| 490/490 [01:02<00:00,  7.79it/s]
+The average BLEU score over the test set was 0.370626940230426
+
+Analysis:
+Q1.Findings: 	
+1. As we can see from above result, BLEU score increases and loss decreases after each epoch. 
+2. In the testing phrase, sometimes beam search cannot find 
+"end of sentence" token.
+3. Single-head attention model achieves lowerest loss and highest BLEU score at epoch 5 during training.
+4. Multi-head attention model performs the best among all three models during testing.
+
+Q2.
+I find that the BLEU score during testing is always greater than BLEU score during training. The reason 
+might because they're using different forward strategy in a2_abc.py. In the training phrase, It use teacher 
+forcing strategy, which in general causes exposure bias. This might make the BLEU lower than expected. 
+While in testing, It uses beam search.
+
+Q3.
+Single-head attention performs better than the model without attention, this might because it also passes context vector
+into the decoder, which tells us how relevent is the current time step output with respect to each hidden state. In this way,
+the model will remember some important context that was forgotten in the model without attention.
+Multi-head model performs the best among all three models which has highest average BLEU score in testing phrase.This might because
+it "splits" the hidden state into n slices. Each of the hidden state slice will give you different information that you can use later, which
+captures more accurate information than single head attention model.
